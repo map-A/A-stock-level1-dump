@@ -1,0 +1,47 @@
+[package]
+name = "stock-fetcher"
+version = "0.1.0"
+edition = "2021"
+authors = ["Stock Fetcher Team"]
+description = "High-performance A-share Level1 data fetcher with ClickHouse integration"
+
+[dependencies]
+# 异步运行时
+tokio = { version = "1.41", features = ["full"] }
+# ClickHouse客户端
+clickhouse = { version = "0.13", features = ["time"] }
+# Excel解析
+calamine = "0.26"
+# 序列化
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+# 配置文件
+toml = "0.8"
+# 命令行
+clap = { version = "4.5", features = ["derive"] }
+# 日志
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# 错误处理
+anyhow = "1.0"
+thiserror = "2.0"
+# 时间处理
+chrono = "0.4"
+# 并发控制
+futures = "0.3"
+# 字节处理
+bytes = "1.9"
+# 临时文件
+tempfile = "3.13"
+# 时间类型（ClickHouse Date 原生支持）
+time = { version = "0.3" }
+# Zlib压缩
+flate2 = "1.0"
+# 高性能锁
+parking_lot = "0.12"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

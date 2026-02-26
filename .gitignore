@@ -98,3 +98,44 @@ tmp/
 logs/
 cache/
 *.tmp
+
+# Added by cargo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.Python
+
+# Rust
+/target/
+Cargo.lock
+*.rs.bk
+
+# Data files
+output/
+data/
+*.csv
+*.bin
+*.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+clickhouse_data/
+
+# Logs
+*.log
+
+# Config (keep example)
+# config.toml  # 如果要忽略配置文件，取消注释

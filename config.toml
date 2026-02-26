@@ -1,0 +1,36 @@
+# Stock Fetcher Configuration
+
+[server]
+# 通达信服务器配置
+host = "120.237.21.226"
+port = 7709
+timeout_secs = 10
+retry_count = 3
+retry_delay_ms = 1000
+
+[fetcher]
+# 并发配置
+max_concurrent = 10  # 最大并发数
+batch_size = 100     # 每批次处理的股票数
+request_delay_ms = 100  # 请求间隔（避免被封）
+max_retries = 3      # 失败重试次数
+
+[clickhouse]
+# ClickHouse数据库配置
+url = "http://localhost:18123"
+database = "stock_db"
+username = "stock_user"
+password = "stock_pass"
+batch_size = 1000  # 批量插入大小
+
+[data]
+# 数据文件路径
+stock_list = "行业分类.xlsx"
+trading_calendar = "data/trading_calendar.bin"
+output_dir = "output"
+
+[validation]
+# 数据验证规则
+min_price = 0.01
+max_price = 10000.0
+max_price_change_pct = 30.0  # 最大涨跌幅%
