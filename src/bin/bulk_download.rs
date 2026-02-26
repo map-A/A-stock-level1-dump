@@ -7,6 +7,7 @@
 /// - 流水线：下载/解析与DB写入并行，跨股批量写入
 
 use anyhow::Result;
+use clickhouse;
 use tracing::{info, error, warn};
 use futures::stream::{self, StreamExt};
 use std::time::Instant;
@@ -15,7 +16,7 @@ use std::collections::HashSet;
 use tokio::sync::mpsc;
 
 // 引用主程序的模块
-use stock_fetcher::{config, db, fetcher, utils};
+use stock_fetcher::{config, db, fetcher, parser, utils};
 use stock_fetcher::models::MarketData;
 
 /// DB写入批次大小：跨股累积更多行再写入，减少 insert 次数
@@ -45,7 +46,42 @@ async fn main() -> Result<()> {
     info!("日期: {}, 并发: {}, 模式: {}", date, concurrent, if force { "强制" } else { "增量" });
     
     let config = config::Config::load("config.toml")?;
-    
+
+    // 1. 初始化数据库（幂等）
+    info!("初始化数据库...");
+    db::init_database(&config).await?;
+
+    // 2. 如果 stock_info 为空则导入股票列表
+    {
+        let client = clickhouse::Client::default()
+            .with_url(&config.clickhouse.url)
+            .with_user(&config.clickhouse.username)
+            .with_password(&config.clickhouse.password)
+            .with_database(&config.clickhouse.database);
+        let count: u64 = client
+            .query("SELECT count() FROM stock_info")
+            .fetch_one::<u64>()
+            .await
+            .unwrap_or(0);
+        if count == 0 {
+            info!("导入股票列表: {}", config.data.stock_list);
+            let stocks = parser::excel::parse_stock_list(&config.data.stock_list)?;
+            info!("解析到 {} 只股票，写入数据库...", stocks.len());
+            db::import_stock_info(&config, &stocks).await?;
+        } else {
+            info!("stock_info 已有 {} 条记录，跳过导入", count);
+        }
+    }
+
+    // 3. 验证交易日
+    let calendar = parser::calendar::TradingCalendar::load(&config.data.trading_calendar)?;
+    parser::calendar::TradingCalendar::validate_date(date)?;
+    if !calendar.is_trading_day(date) {
+        eprintln!("❌ {} 不是交易日", date);
+        std::process::exit(1);
+    }
+    info!("✓ {} 是交易日", date);
+
     info!("读取股票代码...");
     let mut codes = db::get_all_stock_codes(&config).await?;
     info!("共 {} 只股票", codes.len());
@@ -73,10 +109,7 @@ async fn main() -> Result<()> {
     )?);
     
     let db_client = Arc::new(db::ClickHouseClient::new(&config));
-    let validator = Arc::new(utils::DataValidator::new(
-        config.validation.min_price,
-        config.validation.max_price,
-    ));
+    let validator = Arc::new(utils::DataValidator::new());
     
     let total = codes.len();
     let start = Instant::now();

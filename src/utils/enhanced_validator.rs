@@ -2,16 +2,11 @@ use crate::models::MarketData;
 
 /// 数据验证器
 pub struct DataValidator {
-    min_price: f64,
-    max_price: f64,
 }
 
 impl DataValidator {
-    pub fn new(min_price: f64, max_price: f64) -> Self {
-        Self {
-            min_price,
-            max_price,
-        }
+    pub fn new() -> Self {
+        DataValidator {}
     }
     
     /// 验证时间是否在交易时段
@@ -46,21 +41,6 @@ impl DataValidator {
         false
     }
     
-    /// 验证价格
-    pub fn validate_price(&self, price: Option<f64>) -> bool {
-        match price {
-            Some(p) => p.is_finite() && p >= self.min_price && p <= self.max_price,
-            None => true,  // 允许None
-        }
-    }
-    
-    /// 验证成交量
-    pub fn validate_volume(&self, volume: Option<u64>) -> bool {
-        match volume {
-            Some(_v) => true,
-            None => true,
-        }
-    }
     
     /// 验证MarketData
     pub fn validate(&self, data: &MarketData) -> bool {
@@ -68,30 +48,6 @@ impl DataValidator {
         if !self.validate_time(data.time_sec) {
             return false;
         }
-        
-        // 验证价格字段
-        let price_fields = [
-            data.avg_sell_price,
-            data.high_price,
-            data.low_price,
-            data.sell5_price,
-            data.sell4_price,
-            data.sell3_price,
-            data.sell2_price,
-            data.sell1_price,
-            data.buy1_price,
-            data.buy2_price,
-            data.buy3_price,
-            data.buy4_price,
-            data.buy5_price,
-        ];
-        
-        for price in &price_fields {
-            if !self.validate_price(*price) {
-                return false;
-            }
-        }
-        
         true
     }
 }
@@ -109,7 +65,7 @@ mod tests {
     
     #[test]
     fn test_validate_time() {
-        let validator = DataValidator::new(0.01, 10000.0);
+        let validator = DataValidator::new();
         
         // 早盘
         assert!(validator.validate_time(91500));  // 09:15:00
@@ -124,15 +80,4 @@ mod tests {
         assert!(!validator.validate_time(150100)); // 15:01:00
     }
     
-    #[test]
-    fn test_validate_price() {
-        let validator = DataValidator::new(0.01, 10000.0);
-        
-        assert!(validator.validate_price(Some(100.0)));
-        assert!(!validator.validate_price(Some(0.0)));
-        assert!(!validator.validate_price(Some(-1.0)));
-        assert!(!validator.validate_price(Some(f64::NAN)));
-        assert!(!validator.validate_price(Some(f64::INFINITY)));
-        assert!(validator.validate_price(None));
-    }
 }

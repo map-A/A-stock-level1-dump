@@ -36,7 +36,7 @@ cargo build --release
 | 方案 | 单股耗时 | 全量耗时(5589股) | 提升 |
 |------|---------|------------------|------|
 | Python | 10秒 | 15.5小时 | - |
-| **Rust v2.0** | **1.4秒** | **2分钟** | **60倍** |
+| **Rust v2.0** | **1.4秒** | **3分钟** | **60倍** |
 
 ## 🆕 v2.0 更新（2026-02-25）
 
@@ -105,13 +105,16 @@ done
 
 ```bash
 # 查看下载的股票数
-curl -s 'http://localhost:18123/?user=stock_user&password=stock_pass&database=stock_db' \
+curl -s 'http://localhost:8123/?user=stock_user&password=stock_pass&database=stock_db' \
   --data "SELECT count(DISTINCT code) FROM market_data WHERE trade_date='2026-02-24'"
 
 # 查看某只股票的数据
-curl -s 'http://localhost:18123/?user=stock_user&password=stock_pass&database=stock_db' \
+curl -s 'http://localhost:8123/?user=stock_user&password=stock_pass&database=stock_db' \
   --data "SELECT * FROM market_data WHERE code='600519' AND trade_date='2026-02-24' LIMIT 10"
 ```
+# 清空旧数据（如需要）
+curl 'http://localhost:8123/?user=stock_user&password=stock_pass&database=stock_db' \
+  --data "DELETE FROM market_data WHERE trade_date='2026-02-24'"
 
 
 ### 配置文件 (config.toml)

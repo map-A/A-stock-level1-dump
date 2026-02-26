@@ -91,23 +91,16 @@ impl NativeTcpClient {
         replace_date_code(&mut template, &date_str, code)
             .context("Failed to replace date/code in REQUEST")?;
         
-        // 读取初始offset
-        let initial_offset = read_u32_le(&template, OFFSET_POS2)
-            .context("Failed to read initial offset")?;
-        
         let mut all_responses = Vec::new();
         let mut baseline_size = None;
         
         // 分页循环（最多4页）
-        for page in 0..4 {
-            let offset = initial_offset + DEFAULT_STEP * page;
-            
-            // 更新请求中的offset
+        // 注意：只更新pos1，pos2保持模板中的固定值不变（与Python版本行为一致）
+        for page in 0..999u32 {
+            // 更新请求中的offset（仅更新pos1）
             let mut request = template.clone();
             write_u32_le(&mut request, OFFSET_POS1, DEFAULT_STEP * page)
                 .context("Failed to write offset1")?;
-            write_u32_le(&mut request, OFFSET_POS2, offset)
-                .context("Failed to write offset2")?;
             
             // 发送请求
             stream.write_all(&request).await
@@ -142,10 +135,16 @@ impl NativeTcpClient {
         // 接收尾部数据
         let _tail = Self::recv_until_quiet(&mut stream, 1500).await.ok();
         
-        // 合并所有响应
+        // 合并响应：第0页完整保留；第1+页若以MAGIC开头则去掉前20字节的分片头
         let mut combined_response = Vec::new();
-        for resp in all_responses {
-            combined_response.extend(resp);
+        for (i, resp) in all_responses.iter().enumerate() {
+            if i == 0 {
+                combined_response.extend_from_slice(resp);
+            } else if resp.len() > 20 && resp.starts_with(super::protocol::MAGIC) {
+                combined_response.extend_from_slice(&resp[20..]);
+            } else {
+                combined_response.extend_from_slice(resp);
+            }
         }
         
         debug!("Total response size: {} bytes", combined_response.len());

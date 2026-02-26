@@ -6,8 +6,8 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 use crate::models::MarketData;
 use super::protocol::{
-    parse_hexdump, replace_date_code, write_u32_le, read_u32_le,
-    DEFAULT_HELLO, DEFAULT_REQUEST, OFFSET_POS1, OFFSET_POS2, DEFAULT_STEP
+    parse_hexdump, replace_date_code, write_u32_le,
+    DEFAULT_HELLO, DEFAULT_REQUEST, OFFSET_POS1, DEFAULT_STEP
 };
 use super::extract::extract_payloads;
 use super::parser::parse_payload;
@@ -144,28 +144,30 @@ impl HighPerfTcpClient {
         replace_date_code(&mut request, &date_str, code)
             .context("Failed to replace date/code in REQUEST")?;
         
-        // 读取初始offset
-        let initial_offset = read_u32_le(&request, OFFSET_POS2)?;
-        
-        let mut all_responses = Vec::with_capacity(4);
+        let mut all_responses = Vec::with_capacity(16);
         let mut baseline_size: Option<usize> = None;
         
-        // 分页循环（最多4页）
-        for page in 0..4 {
-            let offset = initial_offset + DEFAULT_STEP * page;
-            
-            // 更新offset（直接修改）
+        // 分页循环（最多999页，与Python默认一致；实际由短页停判定提前终止）
+        // 注意：只更新pos1，pos2保持模板中的固定值不变（与Python版本行为一致）
+        for page in 0..99u32 {
+            // 更新offset（仅更新pos1）
             write_u32_le(&mut request, OFFSET_POS1, DEFAULT_STEP * page)?;
-            write_u32_le(&mut request, OFFSET_POS2, offset)?;
             
             // 发送请求
             conn.stream.write_all(&request).await?;
             
-            // 接收响应：1000ms等待首字节（服务器查询时间），80ms检测后续静默
-            let response = Self::recv_until_quiet(&mut conn.stream, 1000, 80).await?;
+            // 接收响应：1000ms等待首字节（服务器查询时间），200ms检测后续静默
+            let response = Self::recv_until_quiet(&mut conn.stream, 1000, 200).await?;
             let got = response.len();
             
             if got == 0 {
+                break;
+            }
+
+            // 无 MAGIC 数据块 = 服务器已无有效数据（如"无数据"错误响应），无需继续翻页
+            if !response.windows(super::protocol::MAGIC.len())
+                .any(|w| w == super::protocol::MAGIC)
+            {
                 break;
             }
             
@@ -189,11 +191,18 @@ impl HighPerfTcpClient {
         // 归还连接（仍然保持HELLO认证状态）
         self.pool.return_connection(conn);
         
-        // 合并响应（优化：预分配）
+        // 合并响应：第0页完整保留；第1+页若以MAGIC开头则去掉前20字节的分片头
+        // （与Python的merge_zlib_segments逻辑一致）
         let total_size: usize = all_responses.iter().map(|r| r.len()).sum();
         let mut combined_response = Vec::with_capacity(total_size);
-        for resp in all_responses {
-            combined_response.extend(resp);
+        for (i, resp) in all_responses.iter().enumerate() {
+            if i == 0 {
+                combined_response.extend_from_slice(resp);
+            } else if resp.len() > 20 && resp.starts_with(super::protocol::MAGIC) {
+                combined_response.extend_from_slice(&resp[20..]);
+            } else {
+                combined_response.extend_from_slice(resp);
+            }
         }
         
         // 提取payload

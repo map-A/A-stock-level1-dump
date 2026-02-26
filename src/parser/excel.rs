@@ -54,9 +54,11 @@ mod tests {
     #[test]
     fn test_parse_stock_list() {
         // 需要实际的Excel文件
-        if let Ok(stocks) = parse_stock_list("行业分类.xlsx") {
+        if let Ok(stocks) = parse_stock_list("./data/category.xlsx") {
+            println!("Parsed {} stocks", stocks.len());
             assert!(stocks.len() > 0);
             assert_eq!(stocks[0].code.len(), 6);
+
         }
     }
 }

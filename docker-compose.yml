@@ -2,18 +2,18 @@ version: '3.8'
 
 services:
   clickhouse:
-    image: clickhouse/clickhouse-server:24.1-alpine
+    image: clickhouse/clickhouse-server:latest
     container_name: stock-clickhouse
     ports:
-      - "18123:8123"  # HTTP接口
-      - "19000:9000"  # Native接口
+      - "8123:8123"  # HTTP接口
+      - "9000:9000"  # Native接口
     environment:
       CLICKHOUSE_DB: stock_db
       CLICKHOUSE_USER: stock_user
       CLICKHOUSE_PASSWORD: stock_pass
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     volumes:
-      - clickhouse_data:/var/lib/clickhouse
+      - /Volumes/apple/clickhouse:/var/lib/clickhouse
       - ./clickhouse_config:/etc/clickhouse-server/config.d
     ulimits:
       nofile:

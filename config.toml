@@ -10,14 +10,14 @@ retry_delay_ms = 1000
 
 [fetcher]
 # 并发配置
-max_concurrent = 10  # 最大并发数
+max_concurrent = 100  # 最大并发数
 batch_size = 100     # 每批次处理的股票数
 request_delay_ms = 100  # 请求间隔（避免被封）
 max_retries = 3      # 失败重试次数
 
 [clickhouse]
 # ClickHouse数据库配置
-url = "http://localhost:18123"
+url = "http://localhost:8123"
 database = "stock_db"
 username = "stock_user"
 password = "stock_pass"
@@ -25,7 +25,7 @@ batch_size = 1000  # 批量插入大小
 
 [data]
 # 数据文件路径
-stock_list = "行业分类.xlsx"
+stock_list = "data/category.xlsx"
 trading_calendar = "data/trading_calendar.bin"
 output_dir = "output"
 
