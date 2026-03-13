@@ -63,6 +63,7 @@ cargo build --release
 ```bash
 docker-compose up -d
 ```
+这里数据库初始化完成以后需要等待一段时间，直接进行下面下载步骤可能会遇到网络连接失败
 
 ### 3. 编译项目
 

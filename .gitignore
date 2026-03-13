@@ -116,10 +116,9 @@ Cargo.lock
 
 # Data files
 output/
-data/
 *.csv
-*.bin
-*.json
+# *.bin
+# *.json
 
 # IDE
 .idea/
